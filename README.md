@@ -14,32 +14,25 @@
 
 ## 快速开始
 
-### 1. 安装依赖
+### 1. 安装
+直接通过 pip 安装（支持自动安装所有依赖）：
 ```bash
-pip install -r requestments.txt
+pip install git+https://github.com/jiang-zx/weixin_ocr.git
 ```
 
-### 2. 本地测试
+### 2. 本地使用
+安装后，你可以在任何地方直接使用命令行：
 ```bash
-python main.py
+weixin-ocr image/test.jpg
 ```
-识别结果将输出到控制台并保存至 `result.txt`。
 
-## 作为 Gemini Skill 使用
-本项目自带 `SKILL.md`。在 Gemini CLI 中，只要你进入此项目文件夹，Gemini 就会自动获得“解析微信截图”的能力。
-
-**示例指令：**
-> "帮我解析一下 `image/5e5eb526-90e7-4915-8e00-b363f8bce2b2.jpg` 这个截图，总结下我们聊了什么。"
-
-## 作为 MCP Server 使用
-在你的 MCP 配置文件（如 `claude_desktop_config.json`）中添加：
-
+### 3. 作为 MCP Server 使用
+在 Claude/Gemini 配置文件中直接指定命令：
 ```json
 {
   "mcpServers": {
     "weixin-ocr": {
-      "command": "python",
-      "args": ["-u", "/path/to/weixin_ocr/mcp_server.py"]
+      "command": "weixin-ocr-server"
     }
   }
 }
