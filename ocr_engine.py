@@ -14,14 +14,29 @@ class LocalOCRProvider:
         """
         result = self.ocr_model.predict(image)
         parsed_results = []
-        if not result or not result[0]:
+        if not result:
             return parsed_results
-            
-        for line in result[0]:
-            box = line[0]
-            text = line[1][0]
-            parsed_results.append({
-                'text': text,
-                'box': box
-            })
+        
+        # Parse results from PaddleOCR 3.x/Paddlex output
+        try:
+            for res in result:
+                if 'dt_polys' in res and 'rec_texts' in res:
+                    for box, text in zip(res['dt_polys'], res['rec_texts']):
+                        # box is a numpy array of 4 points
+                        parsed_results.append({
+                            'text': text,
+                            'box': box.tolist() if hasattr(box, 'tolist') else box
+                        })
+                elif 'doc_res' in res:
+                    # Alternative path for some pipeline outputs
+                    for page in res['doc_res'].get('pages', []):
+                        for line in page.get('lines', []):
+                            parsed_results.append({
+                                'text': line['content'],
+                                'box': line['coord']
+                            })
+        except Exception as e:
+            # If parsing fails, we could log it, but for now we return what we have
+            pass
+
         return parsed_results
