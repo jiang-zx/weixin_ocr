@@ -1,5 +1,6 @@
 import asyncio
 import os
+import argparse
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.server.models import InitializationOptions
@@ -52,7 +53,7 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     except Exception as e:
         return [types.TextContent(type="text", text=f"处理图像时发生错误: {str(e)}")]
 
-async def run():
+async def run_stdio():
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, InitializationOptions(
             server_name="wechat-ocr",
@@ -64,5 +65,44 @@ async def run():
             )
         ))
 
+def run_sse(host="0.0.0.0", port=8000):
+    from mcp.server.sse import SseServerTransport
+    from starlette.applications import Starlette
+    from starlette.routing import Route
+    import uvicorn
+
+    sse = SseServerTransport("/messages")
+
+    async def handle_sse(request):
+        async with sse.connect_sse(request.scope, request.receive, request._send) as (read_stream, write_stream):
+            await server.run(read_stream, write_stream, InitializationOptions(
+                server_name="wechat-ocr",
+                server_version="1.0.0",
+                capabilities=server.get_capabilities(
+                    notification_options=types.ServerCapabilities(
+                        tools={}
+                    )
+                )
+            ))
+
+    app = Starlette(
+        debug=True,
+        routes=[
+            Route("/sse", endpoint=handle_sse),
+            Route("/messages", endpoint=sse.handle_post, methods=["POST"]),
+        ],
+    )
+
+    print(f"MCP SSE Server starting at http://{host}:{port}/sse")
+    uvicorn.run(app, host=host, port=port)
+
 if __name__ == "__main__":
-    asyncio.run(run())
+    parser = argparse.ArgumentParser(description="WeChat OCR MCP Server")
+    parser.add_argument("--mode", choices=["stdio", "sse"], default="stdio", help="Run mode (default: stdio)")
+    parser.add_argument("--port", type=int, default=8000, help="Port for SSE mode (default: 8000)")
+    args = parser.parse_args()
+
+    if args.mode == "sse":
+        run_sse(port=args.port)
+    else:
+        asyncio.run(run_stdio())
