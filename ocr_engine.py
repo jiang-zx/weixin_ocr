@@ -1,3 +1,4 @@
+import sys
 from paddleocr import PaddleOCR
 import numpy as np
 
@@ -6,7 +7,14 @@ class LocalOCRProvider:
         # Initialize PaddleOCR model (downloaded automatically on first run)
         # lang="ch" supports Chinese and English
         # Disable MKLDNN to avoid compatibility issues in some environments
-        self.ocr_model = PaddleOCR(use_textline_orientation=True, lang="ch", enable_mkldnn=False)
+        
+        # Redirect stdout to stderr temporarily to prevent PaddleOCR logs from polluting MCP stdout
+        original_stdout = sys.stdout
+        sys.stdout = sys.stderr
+        try:
+            self.ocr_model = PaddleOCR(use_textline_orientation=True, lang="ch", enable_mkldnn=False)
+        finally:
+            sys.stdout = original_stdout
 
     def ocr(self, image: np.ndarray) -> list:
         """
